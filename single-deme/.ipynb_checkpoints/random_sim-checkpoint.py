@@ -43,9 +43,9 @@ def run_sim(config_file_path, warlockdir):
 def main():
     # get input and output file paths
     parser = argparse.ArgumentParser(description='Run simulations for intra-deme selection ABC')
-    parser.add_argument('inputfile', type=str, help='path to warlock config.yml file')
-    parser.add_argument('outputdir', type=str, help='path to output directory to be included in config.yml')
-    parser.add_argument('warlockdir', type=str, help='path to local warlock repo folder')
+    parser.add_argument('-i','--inputfile', type=str, help='path to warlock config.yml file')
+    parser.add_argument('-o','--outputdir', type=str, help='path to output directory to be included in config.yml')
+    parser.add_argument('-w','--warlockdir', type=str, help='path to local warlock repo folder')
     #execute the parse_args() method
     args = parser.parse_args()
     
