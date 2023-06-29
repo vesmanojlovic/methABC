@@ -3,8 +3,8 @@ Approximate Bayesian Computation framework for inferring evolutionary parameters
 
 ## TO DO
 ### Intra-gland:
-[x] Script for running warlock with parameters taken from a prior distribution
-[ ] Script for calculating the distances and visualising the results
+- [x] Script for running warlock with parameters taken from a prior distribution
+- [ ] Script for calculating the distances and visualising the results
 ### Inter-gland:
-[ ] Script for running warlock with parameters taken from a prior distribution
-[ ] Script for calculating the distances and visualising the results
+- [ ] Script for running warlock with parameters taken from a prior distribution
+- [ ] Script for calculating the distances and visualising the results
