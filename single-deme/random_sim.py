@@ -36,8 +36,12 @@ def input_params(inputfile, outputdir, warlockdir):
 
 # run warlock using given config file
 def run_sim(config_file_path, warlockdir):
+    command = ['conda', 'activate', 'warlock']
+    subprocess.run(command)
     command = ['bash', 'warlock.sh', '-c', config_file_path, '-e', 'local']
     subprocess.run(command, cwd=warlockdir)
+    command = ['conda', 'deactivate']
+    subprocess.run(command)
     return
 
 def main():
