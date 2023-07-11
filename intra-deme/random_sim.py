@@ -6,14 +6,15 @@ import os
 import subprocess
 import yaml
 
-from scipy.stats import wasserstein_distance
-
 # generate parameters from prior distribution
 def get_priors():
     mu = abs(np.random.normal(0.00005, 0.000025))
-    s = np.random.exponential(20)
-    flip = abs(np.random.normal(0.1, 0.05))
+    s = abs(np.random.normal(0, 0.05))
+    flip = abs(np.random.normal(0.05, 0.0025))
     return mu, s, flip
+
+def gen_seeds(size=8):
+    return list(np.random.choice(range(1000), size=size, replace=False))
 
 # edit config.yml with new parameters
 def input_params(configfile, outputdir, warlockdir):
@@ -28,6 +29,7 @@ def input_params(configfile, outputdir, warlockdir):
     data['workflow_analysis_outdir'] = outputdir
     data['demon_write_clones_file'] = 1
     data['demon_write_demes_file'] = 1
+    data['demon_seed'] = gen_seeds()
 
     if outputdir[-1] == '/':
         outputfile = outputdir + 'config.yml'
@@ -40,12 +42,8 @@ def input_params(configfile, outputdir, warlockdir):
 
 # run warlock using given config file
 def run_sim(config_file_path, warlockdir):
-    #command = ['conda', 'activate', 'warlock']
-    #subprocess.run(command)
     command = ['bash', 'warlock.sh', '-c', config_file_path, '-e', 'local']
     subprocess.run(command, cwd=warlockdir)
-    #command = ['conda', 'deactivate']
-    #subprocess.run(command)
     return
 
 def main():

@@ -11,7 +11,7 @@ from scipy.stats import wasserstein_distance
 # generate parameters from prior distribution
 def get_priors():
     mu = abs(np.random.normal(0.00005, 0.000025))
-    s = np.random.exponential(20)
+    s = np.random.exponential(0.05)
     flip = abs(np.random.normal(0.1, 0.05))
     return mu, s, flip
 
