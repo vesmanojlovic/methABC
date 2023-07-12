@@ -1,4 +1,0 @@
-Population	Parent	Identity	DriverIdentity	DriverMutations	MigrationMutations	Immortal	PassengerMutations	BirthRate	MigrationRate	OriginTime	Descendants
-0	0	0	0	0	0	1	0	1.000000	0.000000	0.000000	1028
-0	0	1	1	1	0	1	0	7.348100	0.000000	7.742762	1028
-1028	1	3	3	2	0	1	0	54.853230	0.000000	9.433782	1028
