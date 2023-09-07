@@ -1,0 +1,3 @@
+[submodule "resources/methdemon"]
+	path = resources/methdemon
+	url = https://github.com/vesmanojlovic/methdemon
