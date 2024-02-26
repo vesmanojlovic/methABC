@@ -21,6 +21,7 @@ def main():
 	distance,
 	population_size=100,
     )
+    # initialise observation as initial simulation
     abc_id = abc.new(
 	"sqlite:///" + "../tmp/test.db", {"data": observation}
     )
