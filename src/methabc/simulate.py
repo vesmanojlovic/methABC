@@ -5,7 +5,7 @@ import tempfile
 import numpy as np
 import pandas as pd
 
-from utils import write_config
+from .utils import write_config
 
 
 def simulate(
