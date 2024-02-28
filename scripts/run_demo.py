@@ -1,4 +1,4 @@
-from methabc.simulate import simulate_abc
+from methabc.simulate import simulate_abc, simulate
 from methabc.distance import distance
 import pyabc
 
@@ -16,14 +16,15 @@ def main():
         deme_carrying_capacity=pyabc.RV("rv_discrete", values=(K_prior, [1 / len(K_prior)] * len(K_prior)))
     )
     abc = pyabc.ABCSMC(
-	simulate_abc,
-	prior,
-	distance,
-	population_size=100,
+        simulate_abc,
+        prior,
+        distance,
+        population_size=100,
     )
     # initialise observation as initial simulation
+    observation = simulate(prior.rvs())
     abc_id = abc.new(
-	"sqlite:///" + "../tmp/test.db", {"data": observation}
+        "sqlite:///" + "../tmp/test.db", {"data": observation}
     )
     history = abc.run(max_nr_populations=10, minimum_epsilon=0.1)
 
