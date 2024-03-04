@@ -3,30 +3,31 @@ from methabc.distance import distance
 import pyabc
 
 def main():
-    unif_params = {
-	    'meth_rate': (0.005, 0.1),
-	    'demeth_rate': (0.005, 0.1),
-	    'init_migration_rate': (0.00001, 0.001),
-	    'mu_driver_birth': (0.00001, 0.0001),
+    halfnorm_params = {
+	    'meth_rate': 0.01,
+	    'demeth_rate': 0.01,
+	    'init_migration_rate': 0.001,
+	    'mu_driver_birth': 0.0001,
+	    's_driver_birth': 0.1
     }
-    K_prior = (50, 100, 500)
+    discrete_param = (50, 100, 500)
     prior = pyabc.Distribution(
-        **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
-        s_driver_birth=pyabc.RV("halfnorm", scale=0.05),
-        deme_carrying_capacity=pyabc.RV("rv_discrete", values=(K_prior, [1 / len(K_prior)] * len(K_prior)))
+        **{key: pyabc.RV("halfnorm", scale=value) for key, value in halfnorm_params.items()},
+        deme_carrying_capacity=pyabc.RV("rv_discrete", values=(discrete_param, [1 / len(discrete_param)] * len(discrete_param)))
     )
     abc = pyabc.ABCSMC(
         simulate_abc,
         prior,
         distance,
-        population_size=100,
+        population_size=500,
     )
     # initialise observation as initial simulation
-    observation = simulate(prior.rvs())
+    obs_param = prior.rvs()
+    observation = simulate(obs_param)
     abc_id = abc.new(
-        "sqlite:///" + "../tmp/test.db", {"data": observation}
+        "sqlite:///" + "tmp/test.db", {"data": observation}
     )
-    history = abc.run(max_nr_populations=10, minimum_epsilon=0.1)
+    history = abc.run(max_nr_populations=10, minimum_epsilon=0.05)
 
 
 if __name__ == "__main__":

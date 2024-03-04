@@ -24,9 +24,9 @@ def write_config(
         parts = line.split(maxsplit=1)
         if parts[0] in params.keys():
             if type(params[parts[0]]) is float:
-                updated_line = f"    {parts[0]} = {params[parts[0]]:.6f}\n"
+                updated_line = f"    {parts[0]} {params[parts[0]]:.6f}\n"
             else:
-                updated_line = f"    {parts[0]} = {params[parts[0]]}\n"
+                updated_line = f"    {parts[0]} {params[parts[0]]}\n"
         else:
             updated_line = line
         updated_lines.append(updated_line)
