@@ -25,12 +25,12 @@ def main():
     )
 
     obs_param = {
-	'meth_rate': 0.005,
-	'demeth_rate': 0.005,
-	'init_migration_rate': 0.0005,
+	'meth_rate': 0.003,
+	'demeth_rate': 0.002,
+	'init_migration_rate': 0.00005,
 	's_driver_birth': 0.1,
-	'mu_driver_birth': 0.00005,
-	'deme_carrying_capacity': 120,
+	'mu_driver_birth': 0.0001,
+	'deme_carrying_capacity': 100,
     }
     print("Generating synthetic data...")
     observation = simulate(obs_param)
@@ -43,7 +43,6 @@ def main():
 	mapping={
 	    'p_discrete': pyabc.DiscreteJumpTransition(
 	    domain=discrete_domain,
-	    p_stay=0,
 	    ),
 	    'p_continuous': pyabc.MultivariateNormalTransition(),
 	}
@@ -53,8 +52,8 @@ def main():
 	simulate_abc,
 	prior,
 	distance,
-	population_size=200,
-	eps=pyabc.SilkOptimalEpsilon(k=10),
+	population_size=500,
+	eps=pyabc.SilkOptimalEpsilon(k=8),
 	transitions=transition,
 	sampler=redis_sampler,
     )

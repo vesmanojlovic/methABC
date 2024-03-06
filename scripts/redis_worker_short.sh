@@ -6,7 +6,7 @@
 #SBATCH --nodes=8
 #SBATCH --ntasks-per-node=48
 #SBATCH --mem=0
-#SBATCH --time=48:00:00
+#SBATCH --time=72:00:00
 #SBATCH -o /users/adby616/archive/abc-temp/%x_%j.o
 #SBATCH -e /users/adby616/archive/abc-temp/%x_%j.e
 

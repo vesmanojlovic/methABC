@@ -1,6 +1,5 @@
 from methabc.simulate import simulate_abc, simulate
 from methabc.distance import distance, compute_deme_matrix
-from pyabc.sampler import RedisStaticSampler
 
 import pyabc
 import numpy as np
@@ -36,13 +35,11 @@ def main():
     observation = simulate(obs_param)
     observed_matrix = compute_deme_matrix(observation)
     print("Done!")
-    print("Setting up redis_sampler...")
-    redis_sampler = RedisStaticSampler(host="127.0.0.1", port=6379)
 
     transition = pyabc.AggregatedTransition(
 	mapping={
 	    'p_discrete': pyabc.DiscreteJumpTransition(
-	    domain=discrete_domain, p_stay=0.7
+	    domain=discrete_domain, p_stay=0
 	    ),
 	    'p_continuous': pyabc.MultivariateNormalTransition(),
 	}
@@ -52,20 +49,19 @@ def main():
 	simulate_abc,
 	prior,
 	distance,
-	population_size=200,
-	eps=pyabc.QuantileEpsilon(alpha=0.2),
+	population_size=50,
+	eps=pyabc.SilkOptimalEpsilon(k=10),
 	transitions=transition,
-	sampler=redis_sampler,
     )
 
     abc_id = abc.new(
-	db="sqlite:///" + "tmp/example1.db",
+	db="sqlite:///" + "tmp/example2.db",
 	observed_sum_stat={"data": observation},
 	gt_par=obs_param,
 	meta_info={"initial_dist_matrix": observed_matrix},
     )
 
-    history = abc.run(max_nr_populations=20)
+    history = abc.run(max_nr_populations=5)
 
 
 if __name__ == "__main__":
