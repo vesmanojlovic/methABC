@@ -4,7 +4,7 @@ capacity
 }
 dispersal
 {
-    init_migration_rate 0.0001
+    init_migration_rate 0.00007
     migration_rate_scales_with_K 1
 }
 mutation
@@ -41,7 +41,7 @@ fission_times
 stopping_conditions
 {
     max_time 86400
-    max_generations 500
+    max_generations 600
     max_fissions 35
 }
 initial_conditions

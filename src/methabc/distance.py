@@ -9,7 +9,6 @@ def squared_distance(gland1, gland2):
     """
     differences = (np.array(gland1) - np.array(gland2)) ** 2
     distance = np.sum(differences)
-
     total_distance = distance / len(differences)
     return total_distance
 
@@ -22,7 +21,7 @@ def compute_deme_matrix(df):
     if 'Side' in df.columns:
         df = df.sort_values(by=['Side', 'OriginTime']).reset_index(drop=True)
         if df.shape[0] != 8:
-            return 10 * np.ones((8, 8))
+            return 100 * np.ones((8, 8))
         else:
             res = np.zeros((8, 8))
             for i, row1 in df.iterrows():
@@ -43,14 +42,13 @@ def compute_deme_matrix(df):
         return res
 
 
-def distance(dict1, dict2):
+def l2_distance(dict1, dict2):
     """
     Compute the distance between two tumours - L_2 norm of the difference of
     their distance matrices (multiplied by 1/2 to only include above diagonal).
     """
     df1 = dict1['data']
     df2 = dict2['data']
-
     x = compute_deme_matrix(df1)
     y = compute_deme_matrix(df2)
     diff = x - y # difference of distance matrices
@@ -58,33 +56,18 @@ def distance(dict1, dict2):
     return res
 
 
-def individual_distance(gland1, gland2):
-    """
-    Compute the Wasserstein distance between two individual demes.
-    """
-    return wasserstein_distance(gland1, gland2)
-
-
 def overall_wasserstein(dict1, dict2):
     """
     Compute the Wasserstein distance between two tumours.
     """
-
     df1 = dict1['data']
     df2 = dict2['data']
-
-    # if df1.shape[0] != 8 or df2.shape[0] != 8:
-    #     return 10
-
     res = 0
     for i in range(8):
-        if 'AverageArray' in df1.columns and 'AverageArray' in df2.columns:
-            res += individual_distance(df1.iloc[i].AverageArray, df2.iloc[i].AverageArray)
-        elif 'AverageArray' in df1.columns:
-            res += individual_distance(df1.iloc[i].AverageArray, df2.iloc[i])
+        if 'AverageArray' in df1.columns:
+            res += wasserstein_distance(df1.iloc[i].AverageArray, df2.iloc[i])
         elif 'AverageArray' in df2.columns:
-            res += individual_distance(df1.iloc[i], df2.iloc[i].AverageArray)
+            res += wasserstein_distance(df1.iloc[i], df2.iloc[i].AverageArray)
         else:
-            res += individual_distance(df1.iloc[i], df2.iloc[i])
-
+            res += wasserstein_distance(df1.iloc[i], df2.iloc[i])
     return res

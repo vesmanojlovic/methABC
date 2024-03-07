@@ -1,5 +1,5 @@
 from methabc.simulate import simulate_abc, simulate
-from methabc.distance import distance, compute_deme_matrix
+from methabc.demo_distance import l2_distance, overall_wasserstein, compute_deme_matrix
 from pyabc.sampler import RedisEvalParallelSampler
 
 import pyabc
@@ -15,11 +15,11 @@ def main():
     }
 
     discrete_domain = np.arange(2, 200)
-    
+
     prior = pyabc.Distribution(
         **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
         deme_carrying_capacity=pyabc.RV(
-		"rv_discrete", 
+		"rv_discrete",
 		values=(discrete_domain, [1 / len(discrete_domain)] * len(discrete_domain)),
 		),
     )
@@ -27,7 +27,7 @@ def main():
     obs_param = {
 	'meth_rate': 0.003,
 	'demeth_rate': 0.002,
-	'init_migration_rate': 0.00005,
+	'init_migration_rate': 0.0001,
 	's_driver_birth': 0.1,
 	'mu_driver_birth': 0.0001,
 	'deme_carrying_capacity': 100,
@@ -48,11 +48,13 @@ def main():
 	}
     )
 
+    distance = pyabc.AdaptiveAggregatedDistance([l2_distance, overall_wasserstein])
+
     abc = pyabc.ABCSMC(
 	simulate_abc,
 	prior,
 	distance,
-	population_size=500,
+	population_size=200,
 	eps=pyabc.SilkOptimalEpsilon(k=8),
 	transitions=transition,
 	sampler=redis_sampler,

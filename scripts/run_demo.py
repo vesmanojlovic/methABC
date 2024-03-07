@@ -1,5 +1,5 @@
 from methabc.simulate import simulate_abc, simulate
-from methabc.distance import distance
+from methabc.distance import l2_distance
 import pyabc
 
 def main():
@@ -18,7 +18,7 @@ def main():
     abc = pyabc.ABCSMC(
         simulate_abc,
         prior,
-        distance,
+        l2_distance,
         population_size=500,
     )
     # initialise observation as initial simulation
