@@ -13,7 +13,7 @@ def main():
         's_driver_birth': (0, 1),
     }
 
-    discrete_domain = np.arange(2, 1001)
+    discrete_domain = np.arange(2, 200)
     
     prior = pyabc.Distribution(
         **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
@@ -49,7 +49,7 @@ def main():
 	simulate_abc,
 	prior,
 	distance,
-	population_size=50,
+	population_size=200,
 	eps=pyabc.SilkOptimalEpsilon(k=10),
 	transitions=transition,
     )
