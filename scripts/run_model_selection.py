@@ -28,7 +28,7 @@ def main():
 
     abc = pyabc.ABCSMC(
             models,
-            prior,
+            [prior, prior, prior],
             distance,
             population_size=200,
             eps=pyabc.SilkOptimalEpsilon(k=10),
