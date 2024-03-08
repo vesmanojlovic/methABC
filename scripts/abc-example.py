@@ -14,7 +14,7 @@ def main():
         's_driver_birth': (0, .5),
     }
 
-    discrete_domain = np.arange(2, 200)
+    discrete_domain = np.arange(90, 110)
 
     prior = pyabc.Distribution(
         **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
