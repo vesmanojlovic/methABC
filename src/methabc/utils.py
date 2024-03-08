@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
+
 def write_config(
 	params,
 	config_template_path="resources/config_template.dat",
@@ -38,3 +39,19 @@ def write_config(
 
     return output_path
 
+
+def import_data(data_path):
+    """
+    Import tumour methylation data from file.
+    Args:
+        data_path: path to the data file
+    Returns:
+        data: pandas dataframe with columns rearranged
+    """
+    data = pd.read_csv(data_path, index_col=0)
+    columns_a = sorted([col for col in data.columns if "A" in col], key=len)
+    columns_b = sorted([col for col in data.columns if "B" in col], key=len)
+    other_columns = [col for col in data.columns if "A" not in col and "B" not in col]
+    sorted_columns = columns_a + columns_b + other_columns
+    data = data[sorted_columns]
+    return data

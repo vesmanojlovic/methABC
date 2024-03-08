@@ -5,6 +5,7 @@ from pyabc.sampler import RedisEvalParallelSampler
 import pyabc
 import numpy as np
 
+
 def main():
     unif_params = {
         'meth_rate': (0, 0.01),
@@ -25,12 +26,12 @@ def main():
     )
 
     obs_param = {
-	'meth_rate': 0.003,
-	'demeth_rate': 0.002,
-	'init_migration_rate': 0.0001,
-	's_driver_birth': 0.1,
-	'mu_driver_birth': 0.0001,
-	'deme_carrying_capacity': 100,
+        'meth_rate': 0.003,
+        'demeth_rate': 0.002,
+        'init_migration_rate': 0.0001,
+        's_driver_birth': 0.1,
+        'mu_driver_birth': 0.0001,
+        'deme_carrying_capacity': 100,
     }
     print("Generating synthetic data...")
     observation = simulate(obs_param)
@@ -51,20 +52,20 @@ def main():
     distance = pyabc.AdaptiveAggregatedDistance([l2_distance, overall_wasserstein])
 
     abc = pyabc.ABCSMC(
-	simulate_abc,
-	prior,
-	distance,
-	population_size=200,
-	eps=pyabc.SilkOptimalEpsilon(k=8),
-	transitions=transition,
-	sampler=redis_sampler,
+        simulate_abc,
+        prior,
+        distance,
+        population_size=200,
+        eps=pyabc.SilkOptimalEpsilon(k=10),
+        transitions=transition,
+        sampler=redis_sampler,
     )
 
     abc_id = abc.new(
-	db="sqlite:///" + "tmp/example.db",
-	observed_sum_stat={"data": observation},
-	gt_par=obs_param,
-	meta_info={"initial_dist_matrix": observed_matrix},
+        db="sqlite:///" + "tmp/example.db",
+        observed_sum_stat={"data": observation},
+        gt_par=obs_param,
+        meta_info={"initial_dist_matrix": observed_matrix},
     )
 
     history = abc.run(max_nr_populations=10)
