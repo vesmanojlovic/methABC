@@ -36,7 +36,7 @@ def main():
             )
 
     db_path = "sqlite:///" + os.path.join(os.getcwd(), "tmp/run_model_selection.db")
-    observation = import_data("data/individual/patient_U.csv")
+    observation = import_data("data/individual/tumour_U.csv")
     abc_id = abc.new(
             db_path,
             observed_sum_stat={"data": observation},
