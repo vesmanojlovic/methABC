@@ -7,6 +7,7 @@ astroid==3.0.3
 asttokens==2.4.1
 async-lru==2.0.4
 attrs==23.2.0
+autograd==1.6.2
 autopep8==2.0.4
 Babel==2.14.0
 beautifulsoup4==4.12.3
@@ -33,8 +34,10 @@ flake8==7.0.0
 fonttools==4.49.0
 fqdn==1.5.1
 fsspec==2024.2.0
+future==1.0.0
 gitdb==4.0.11
 GitPython==3.1.42
+greenlet==3.0.3
 h11==0.14.0
 httpcore==1.0.4
 httpx==0.27.0
@@ -73,6 +76,7 @@ MarkupSafe==2.1.5
 matplotlib==3.8.3
 matplotlib-inline==0.1.6
 mccabe==0.7.0
+-e git+https://github.com/vesmanojlovic/methABC@c9e0d6bd9f78ad29abc9692e4c1d014e943ebf03#egg=methabc
 mistune==3.0.2
 msgpack==1.0.7
 nbclient==0.9.0
