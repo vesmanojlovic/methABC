@@ -4,19 +4,21 @@ capacity
 }
 dispersal
 {
-    init_migration_rate 0.00007
+    init_migration_rate 0.001
+    left_demes -1
+    right_demes -1
     migration_rate_scales_with_K 1
 }
 mutation
 {
-    mu_driver_birth 0.00001
+    mu_driver_birth 0.0001
     mu_driver_migration 0
 }
 fitness
 {
     normal_birth_rate 0
     baseline_death_rate 0
-    s_driver_birth 0.1
+    s_driver_birth 0
     s_driver_migration 0
     max_relative_birth_rate 10
     max_relative_migration_rate 10
@@ -24,25 +26,16 @@ fitness
 methylation
 {
     meth_rate 0.001
-    demeth_rate 0.001
+    demeth_rate 0.0015
     fCpG_loci_per_cell 1200
     manual_array -1
-}
-fission_times
-{
-    t0 0
-    tL1 0
-    tL2 0
-    tL3 0
-    tR1 0
-    tR2 0
-    tR3 0
 }
 stopping_conditions
 {
     max_time 86400
-    max_generations 600
-    max_fissions 35
+    max_generations 10000
+    max_fissions 23
+    turnover .3
 }
 initial_conditions
 {
@@ -56,5 +49,5 @@ output_indicators
 }
 rng_seed
 {
-    seed 15
+    seed 6969
 }
