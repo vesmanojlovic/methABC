@@ -3,31 +3,28 @@ from methabc.demo_distance import l2_distance, overall_wasserstein, compute_deme
 from pyabc.sampler import RedisEvalParallelSampler
 
 import pyabc
-import numpy as np
 
 
 def main():
     unif_params = {
-        'meth_rate': (0, 0.01),
-        'demeth_rate': (0, 0.01),
         'init_migration_rate': (0, 0.001),
         'mu_driver_birth': (0, 0.0001),
-        's_driver_birth': (0, .5),
+        's_driver_birth': (0, 1),
     }
 
-    discrete_domain = np.arange(90, 110)
+    halfnorm_params = {
+        'meth_rate': (0, 0.05),
+        'demeth_rate': (0, 0.05),
+            }
 
     prior = pyabc.Distribution(
         **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
-        deme_carrying_capacity=pyabc.RV(
-		"rv_discrete",
-		values=(discrete_domain, [1 / len(discrete_domain)] * len(discrete_domain)),
-		),
+        **{key: pyabc.RV("halfnorm", a) for key, a in halfnorm_params.items()},
     )
 
     obs_param = {
-        'meth_rate': 0.003,
-        'demeth_rate': 0.002,
+        'meth_rate': 0.0022,
+        'demeth_rate': 0.0018,
         'init_migration_rate': 0.0001,
         's_driver_birth': 0.1,
         'mu_driver_birth': 0.0001,
@@ -42,9 +39,6 @@ def main():
 
     transition = pyabc.AggregatedTransition(
 	mapping={
-	    'p_discrete': pyabc.DiscreteJumpTransition(
-	    domain=discrete_domain,
-	    ),
 	    'p_continuous': pyabc.MultivariateNormalTransition(),
 	}
     )
