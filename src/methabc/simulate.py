@@ -19,6 +19,8 @@ def simulate(
         df: pd.DataFrame with the final output of the simulation
     """
     seed = np.random.randint(2**15 - 2) + 1
+    if seed==66:
+        seed += 1
 
     # temporary directory to store the config and outputs
     tempdir = tempfile.mkdtemp()
@@ -27,15 +29,18 @@ def simulate(
 
     config_dir, config_name = os.path.split(config_path)
 
-    re = subprocess.run(
-        [
-            model_path,
-            config_dir,
-            config_name,
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    try:
+        result = subprocess.run(
+            [model_path, config_dir, config_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True  # Forces an exception if the command fails
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Subprocess failed with: {e.output.decode()}, {e.stderr.decode()}")
+        with open(os.path.join(tempdir, "config.dat"), "r") as f:
+            print(f.read())
+        return None
 
     data_path = os.path.join(config_dir, "final_demes.csv")
     df = pd.read_csv(data_path, header=0)

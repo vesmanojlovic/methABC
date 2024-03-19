@@ -66,11 +66,15 @@ def overall_wasserstein(dict1, dict2):
     res = 0
     for i in range(8):
         if 'AverageArray' in df1.columns:
-            res += wasserstein_distance(df1.iloc[i].AverageArray, df2.iloc[i])
+            df2_col = df2.columns[i]
+            res += wasserstein_distance(df1.iloc[i].AverageArray, df2[df2_col])
         elif 'AverageArray' in df2.columns:
-            res += wasserstein_distance(df1.iloc[i], df2.iloc[i].AverageArray)
+            df1_col = df1.columns[i]
+            res += wasserstein_distance(df1[df1_col], df2.iloc[i].AverageArray)
         else:
-            res += wasserstein_distance(df1.iloc[i], df2.iloc[i])
+            df1_col = df1.columns[i]
+            df2_col = df2.columns[i]
+            res += wasserstein_distance(df1[df1_col], df2[df2_col])
     return res
 
 
@@ -113,11 +117,13 @@ def total_distance(dict1, dict2):
     """
     res = 1000
     if 'Side' in dict1['data'].columns:
-        tmp_df = dict1['data'].sort_values(by=['Side', 'OriginTime']).reset_index(drop=True)
-        fd = dict2['data']
+        tmp_df = dict1['data'].sort_values(by=['Side',
+                                               'OriginTime']).reset_index(drop=True) # simulated data
+        fd = dict2['data'] # real data
     else:
-        tmp_df = dict2['data'].sort_values(by=['Side', 'OriginTime']).reset_index(drop=True)
-        fd = dict1['data']
+        tmp_df = dict2['data'].sort_values(by=['Side',
+                                               'OriginTime']).reset_index(drop=True) # simulated data
+        fd = dict1['data'] # real data
     num_l_demes = len(tmp_df[tmp_df['Side'] == 'left'])
     num_r_demes = len(tmp_df[tmp_df['Side'] == 'right'])
     iterations = factorial(num_l_demes) * factorial(num_r_demes)
