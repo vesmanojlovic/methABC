@@ -13,5 +13,5 @@
 # prepare environment, e.g. set path
 
 # run
-abc-redis-worker --host=10.10.0.21 --port=2666 --runtime=3d --processes=384
+abc-redis-worker --host=10.10.0.21 --port=2166 --runtime=3d --processes=384
 

@@ -14,31 +14,45 @@ def main():
         'demeth_rate': (0, 0.1),
         'mu_driver_birth': (0, 0.001),
     }
+
     halfnorm_params = {
         's_driver_birth': 0.05,
     }
-    prior = pyabc.Distribution(
+
+    prior10 = pyabc.Distribution(
+        init_migration_rate=pyabc.RV("uniform", 0.001, 0.1),
         **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
         **{key: pyabc.RV("halfnorm", a) for key, a in halfnorm_params.items()},
         )
 
-    redis_sampler = RedisEvalParallelSampler(host="127.0.0.1", port=2666)
+    prior100 = pyabc.Distribution(
+        init_migration_rate=pyabc.RV("uniform", 0.0005, 0.1),
+        **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
+        **{key: pyabc.RV("halfnorm", a) for key, a in halfnorm_params.items()},
+        )
+
+    prior1000 = pyabc.Distribution(
+        init_migration_rate=pyabc.RV("uniform", 0.0001, 0.1),
+        **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
+        **{key: pyabc.RV("halfnorm", a) for key, a in halfnorm_params.items()},
+        )
+    priors = [prior10, prior100, prior1000]
+
+    redis_sampler = RedisEvalParallelSampler(host="127.0.0.1", port=2166)
     models = [simulate_10, simulate_100, simulate_1000]
-    distance = total_distance
 
     os.makedirs("model_selection", exist_ok=True)
 
     abc = pyabc.ABCSMC(
             models,
-            [prior, prior, prior],
-            distance,
+            priors,
+            total_distance,
             population_size=500,
-            eps=pyabc.SilkOptimalEpsilon(k=5),
             sampler=redis_sampler,
             )
 
     db_path = "sqlite:///" + os.path.join(os.getcwd(), "model_selection/ms_history.db")
-    observation = import_data("data/individual/tumour_U.csv")
+    observation = import_data("data/individual/tumour_M.csv")
     abc_id = abc.new(
             db_path,
             observed_sum_stat={"data": observation},
