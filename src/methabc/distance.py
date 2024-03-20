@@ -35,12 +35,10 @@ def compute_deme_matrix(df):
             return res
     else:
         res = np.zeros((8, 8))
-        for i in range(8):
-            for j in range(8):
-                res[i, j] = squared_distance(
-                        df.iloc[i],
-                        df.iloc[j],
-                        )
+        fcpgs = df.shape[0]
+        for i, col1 in enumerate(df.columns):
+            for j, col2 in enumerate(df.columns):
+                res[i, j] = sum((df[col1] - df[col2]) ** 2) / fcpgs
         return res
 
 
