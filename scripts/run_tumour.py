@@ -36,15 +36,11 @@ def main():
     redis_sampler = RedisEvalParallelSampler(host="127.0.0.1", port=2166)
     print("Done.")
 
-    population_size=AdaptivePopulationSize(
-                    start_nr_particles=1000,
-                    ),
-
     abc = pyabc.ABCSMC(
         simulate_abc,
         prior,
-        distance=total_distance,
-        population_size=population_size,
+        total_distance,
+        population_size=1000,
         sampler=redis_sampler,
     )
 
@@ -54,7 +50,7 @@ def main():
         meta_info={"initial_dist_matrix": observed_matrix},
     )
 
-    history = abc.run(max_nr_populations=20, minimum_epsilon=0)
+    history = abc.run(max_nr_populations=25, minimum_epsilon=0, min_acceptance_rate=0.05)
 
 
 if __name__ == "__main__":

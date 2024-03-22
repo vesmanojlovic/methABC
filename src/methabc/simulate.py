@@ -62,14 +62,14 @@ def simulate_abc(params):
     return {"data": res}
 
 
-def noisy_abc(params, noise_level=0.05):
+def noisy_abc(params):
     df = simulate(params)
     noise = [
-            list(np.random.normal(
-                0,
-                noise_level,
-                len(df["AverageArray"].iloc[0])
-                )) for _ in range(df.shape[0])
+            list(np.random.beta(
+                2,
+                2,
+                size=len(df["AverageArray"].iloc[0])
+                )/100) for _ in range(df.shape[0])
             ]
     for i in range(df.shape[0]):
         df.AverageArray.iloc[i] += noise[i]
