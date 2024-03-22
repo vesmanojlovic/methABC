@@ -61,3 +61,16 @@ def simulate_abc(params):
     res = simulate(params)
     return {"data": res}
 
+
+def noisy_abc(params, noise_level=0.05):
+    df = simulate(params)
+    noise = [
+            list(np.random.normal(
+                0,
+                noise_level,
+                len(df["AverageArray"].iloc[0])
+                )) for i in range(len(df))
+            ]
+    res = df["AverageArray"].apply(lambda x: x + np.array(noise[df.index[df["AverageArray"]==x][0]]))
+    return {"data": res}
+
