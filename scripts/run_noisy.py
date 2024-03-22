@@ -1,4 +1,4 @@
-from methabc.simulate import simulate_abc
+from methabc.simulate import noisy_abc
 from methabc.distance import total_distance, compute_deme_matrix
 from methabc.utils import import_data
 from pyabc.sampler import RedisEvalParallelSampler
@@ -41,7 +41,7 @@ def main():
                     ),
 
     abc = pyabc.ABCSMC(
-        simulate_abc,
+        noisy_abc,
         prior,
         distance=total_distance,
         population_size=population_size,
