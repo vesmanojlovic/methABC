@@ -69,8 +69,9 @@ def noisy_abc(params, noise_level=0.05):
                 0,
                 noise_level,
                 len(df["AverageArray"].iloc[0])
-                )) for i in range(len(df))
+                )) for _ in range(df.shape[0])
             ]
-    res = df["AverageArray"].apply(lambda x: x + np.array(noise[df.index[df["AverageArray"]==x][0]]))
-    return {"data": res}
+    for i in range(df.shape[0]):
+        df.AverageArray.iloc[i] += noise[i]
+    return {"data": df}
 
