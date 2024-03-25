@@ -48,7 +48,7 @@ def import_data(data_path):
     Returns:
         data: pandas dataframe with columns rearranged
     """
-    data = pd.read_csv(data_path, index_col=0)
+    data = pd.read_csv(data_path, index_col=0).dropna()
     columns_a = sorted([col for col in data.columns if "A" in col], key=len)
     columns_b = sorted([col for col in data.columns if "B" in col], key=len)
     other_columns = [col for col in data.columns if "A" not in col and "B" not in col]
