@@ -50,6 +50,7 @@ def simulate(
 
     return df
 
+
 def simulate_abc(params):
     """
     Wrapper around simulate to be used with pyabc.
@@ -68,10 +69,23 @@ def noisy_abc(params):
             list(np.random.beta(
                 2,
                 2,
-                size=len(df["AverageArray"].iloc[0])
+                size=len(df.AverageArray.iloc[0])
                 )/100) for _ in range(df.shape[0])
             ]
     for i in range(df.shape[0]):
         df.AverageArray.iloc[i] += noise[i]
     return {"data": df}
 
+
+def log_model_abc(log_params):
+    """
+    Wrapper around simulate to be used with pyabc.
+    Args:
+        log_params: log-transformed parameters drawn from prior to use in simulation
+    Returns:
+        A dictionary with the simulated data.
+    """
+    params = {k: 10**v for k, v in log_params.items() if k != "s_driver_birth"}
+    params["s_driver_birth"] = log_params["s_driver_birth"]
+    res = simulate(params)
+    return {"data": res}
