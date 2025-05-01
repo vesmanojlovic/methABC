@@ -8,8 +8,8 @@ git clone https://github.com/vesmanojlovic/methABC --recursive
 ```
 Create virtual environment and install dependencies
 ```
-pyenv virtualenv 3.11 methabc
-pyenv activate methabc
+conda create -n methabc python=3.11
+conda activate methabc
 pip install -e .
 pip install -r requirements.txt
 ```
