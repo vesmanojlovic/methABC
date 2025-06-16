@@ -97,6 +97,7 @@ pexpect==4.9.0
 pillow==10.2.0
 platformdirs==4.2.0
 pluggy==1.4.0
+POT>=0.9.0
 prometheus_client==0.20.0
 prompt-toolkit==3.0.43
 psutil==5.9.8
