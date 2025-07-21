@@ -1,5 +1,5 @@
 from methabc.simulate import log_model_abc
-from methabc.distance import total_distance, compute_deme_matrix
+from methabc.distance import CombinedDistance
 from methabc.utils import import_data
 from pyabc.sampler import RedisEvalParallelSampler
 
@@ -28,16 +28,16 @@ def main():
 
     observation = import_data(data_path)
 
-    observed_matrix = compute_deme_matrix(observation)
-
     print("Setting up redis_sampler...")
     redis_sampler = RedisEvalParallelSampler(host="127.0.0.1", port=2166)
     print("Done.")
 
+    distance = CombinedDistance()
+
     abc = pyabc.ABCSMC(
         log_model_abc,
         prior,
-        total_distance,
+        distance,
         population_size=1000,
         sampler=redis_sampler,
     )
@@ -45,7 +45,6 @@ def main():
     abc_id = abc.new(
         db="sqlite:///" + "test/ground_truth_test_1.db",
         observed_sum_stat={"data": observation},
-        meta_info={"initial_dist_matrix": observed_matrix},
     )
 
     history = abc.run(max_nr_populations=25, minimum_epsilon=0, min_acceptance_rate=0.03)
