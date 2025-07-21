@@ -1,5 +1,5 @@
 from methabc.simulate import simulate_abc, simulate
-from methabc.demo_distance import l2_distance, overall_wasserstein, compute_deme_matrix
+from methabc.distance import CombinedDistance
 from pyabc.sampler import RedisEvalParallelSampler
 
 import pyabc
@@ -33,7 +33,7 @@ def main():
     print("Setting up redis_sampler...")
     redis_sampler = RedisEvalParallelSampler(host="127.0.0.1", port=2666)
 
-    distance = pyabc.AdaptiveAggregatedDistance([l2_distance, overall_wasserstein])
+    distance = CombinedDistance()
 
     abc = pyabc.ABCSMC(
         simulate_abc,

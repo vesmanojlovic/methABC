@@ -163,3 +163,4 @@ widgetsnbextension==4.0.10
 yapf==0.40.2
 zict==3.0.0
 zipp==3.17.0
+pot
