@@ -33,7 +33,7 @@ class CombinedDistance(pyabc.Distance):
         self.scale_l2 = 1.0
         self.scale_2d_wass = 1.0
 
-    def initialize(self, t, get_all_sum_stats, get_all_distances):
+    def initialize(self, t, get_all_sum_stats, get_all_distances, **kwargs):
         """
         Initializes the distance function by calculating normalization constants.
         This method is called by the ABCSMC sampler at the start of each generation.
