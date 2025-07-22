@@ -45,7 +45,7 @@ def main():
     )
 
     abc_id = abc.new(
-        db="sqlite:///" + "tmp/log_model_" + data_id + ".db",
+        db="sqlite:///" + "tmp/redis_worker_test_" + data_id + "_1.db",
         observed_sum_stat={"data": observation},
         meta_info={"initial_dist_matrix": observed_matrix},
     )
