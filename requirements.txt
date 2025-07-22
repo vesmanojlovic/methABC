@@ -76,7 +76,7 @@ MarkupSafe==2.1.5
 matplotlib==3.8.3
 matplotlib-inline==0.1.6
 mccabe==0.7.0
--e git+https://github.com/vesmanojlovic/methABC@c9e0d6bd9f78ad29abc9692e4c1d014e943ebf03#egg=methabc
+
 mistune==3.0.2
 msgpack==1.0.7
 nbclient==0.9.0

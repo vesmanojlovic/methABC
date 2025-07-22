@@ -21,6 +21,9 @@ def write_config(
         lines = file.readlines()
 
     updated_lines = []
+    # Add fixed parameters for demes
+    params['left_demes'] = 4
+    params['right_demes'] = 4
     for line in lines:
         parts = line.split(maxsplit=1)
         if parts[0] in params.keys():

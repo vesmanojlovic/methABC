@@ -33,20 +33,28 @@ class CombinedDistance(pyabc.Distance):
         self.scale_l2 = 1.0
         self.scale_2d_wass = 1.0
 
-    def initialize(self, t, get_all_sum_stats, get_all_distances, **kwargs):
+        # Pre-calculate cost_matrix for 2D Wasserstein distance
+        x_bins = np.linspace(0, 1, self.num_bins)
+        y_bins = np.linspace(0, 1, self.num_bins)
+        xv, yv = np.meshgrid(x_bins, y_bins)
+        self.cost_matrix = np.sqrt((xv.flatten()[:, np.newaxis] - xv.flatten()[np.newaxis, :])**2 + \
+                                   (yv.flatten()[:, np.newaxis] - yv.flatten()[np.newaxis, :])**2)
+
+    def initialize(self, t, get_sample, x_0, total_sims):
         """
         Initializes the distance function by calculating normalization constants.
         This method is called by the ABCSMC sampler at the start of each generation.
         """
-        all_sum_stats = get_all_sum_stats(t=t)
-        observed_sum_stat = get_all_sum_stats(t=-1)[0]
+        sample = get_sample()
+        observed_sum_stat = x_0
 
         raw_distances_1d = []
         raw_distances_l2 = []
         raw_distances_2d = []
 
         # Use a default, non-optimal permutation for speed during initialization
-        for sim_sum_stat in all_sum_stats:
+        for particle in sample.all_particles:
+            sim_sum_stat = particle.sum_stat
             dist_1d, dist_l2, dist_2d = self._calculate_distances_for_permutation(
                 sim_sum_stat['data'], observed_sum_stat['data'], default_perm=True
             )
@@ -54,15 +62,15 @@ class CombinedDistance(pyabc.Distance):
             raw_distances_l2.append(dist_l2)
             raw_distances_2d.append(dist_2d)
 
-        self.scale_1d_wass = pyabc.mad(np.array(raw_distances_1d))
-        self.scale_l2 = pyabc.mad(np.array(raw_distances_l2))
-        self.scale_2d_wass = pyabc.mad(np.array(raw_distances_2d))
+        self.scale_1d_wass = pyabc.distance.mad(np.array(raw_distances_1d))
+        self.scale_l2 = pyabc.distance.mad(np.array(raw_distances_l2))
+        self.scale_2d_wass = pyabc.distance.mad(np.array(raw_distances_2d))
 
         if self.scale_1d_wass == 0: self.scale_1d_wass = 1.0
         if self.scale_l2 == 0: self.scale_l2 = 1.0
         if self.scale_2d_wass == 0: self.scale_2d_wass = 1.0
 
-    def __call__(self, x, y, t):
+    def __call__(self, x, y, t, par):
         """
         The main distance calculation method.
         Performs a brute-force search over all permutations.
@@ -146,20 +154,17 @@ class CombinedDistance(pyabc.Distance):
                 if np.sum(real_hist) > 0: real_hist /= np.sum(real_hist)
 
                 # 2D Wasserstein distance using POT
-                # We need a cost matrix for the bins themselves
-                x_bins = np.linspace(0, 1, self.num_bins)
-                y_bins = np.linspace(0, 1, self.num_bins)
-                xv, yv = np.meshgrid(x_bins, y_bins)
-                cost_matrix = np.sqrt((xv.flatten()[:, np.newaxis] - xv.flatten()[np.newaxis, :])**2 + \
-                                      (yv.flatten()[:, np.newaxis] - yv.flatten()[np.newaxis, :])**2)
-                
-                dist_2d += pot.emd2(sim_hist.flatten(), real_hist.flatten(), cost_matrix)
+                dist_2d += pot.emd2(sim_hist.flatten(), real_hist.flatten(), self.cost_matrix)
 
         return dist_1d, dist_l2, dist_2d
 
     def _compute_inter_deme_matrix(self, df):
         """Computes the inter-deme distance matrix (squared distance)."""
-        n_demes = len(df)
+        if 'AverageArray' in df.columns:
+            n_demes = len(df)
+        else:
+            n_demes = len(df.columns)
+
         matrix = np.zeros((n_demes, n_demes))
         for i in range(n_demes):
             for j in range(n_demes):
@@ -171,5 +176,8 @@ class CombinedDistance(pyabc.Distance):
                     arr2 = df[df.columns[j]]
                 
                 diff = np.array(arr1) - np.array(arr2)
-                matrix[i, j] = np.sum(diff**2) / len(diff)
+                if len(diff) > 0:
+                    matrix[i, j] = np.sum(diff**2) / len(diff)
+                else:
+                    matrix[i, j] = 0
         return matrix

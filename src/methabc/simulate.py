@@ -39,7 +39,9 @@ def simulate(
     except subprocess.CalledProcessError as e:
         print(f"Subprocess failed with: {e.output.decode()}, {e.stderr.decode()}")
         with open(os.path.join(tempdir, "config.dat"), "r") as f:
+            print("--- Generated config.dat ---")
             print(f.read())
+            print("----------------------------")
         return None
 
     data_path = os.path.join(config_dir, "final_demes.csv")
@@ -47,7 +49,9 @@ def simulate(
     df.AverageArray = df.AverageArray.apply(lambda x: np.fromstring(x, sep=";"))
     df = df[np.floor(df.Generation) == np.floor(df.Generation.max())]
     df = df.reset_index(drop=True)
-
+    # Ensure exactly 8 demes are returned
+    if df.shape[0] > 8:
+        df = df.iloc[:8]
     return df
 
 
