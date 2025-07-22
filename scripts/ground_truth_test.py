@@ -43,7 +43,7 @@ def main():
     )
 
     abc_id = abc.new(
-        db="sqlite:///" + "test/ground_truth_test_1.db",
+        db="sqlite:///" + "test/ground_truth_test_2.db",
         observed_sum_stat={"data": observation},
     )
 

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import pyabc
-import pot
+import ot as pot
 
 from itertools import permutations
 from math import factorial

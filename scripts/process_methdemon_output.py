@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
         # Save the processed DataFrame to the specified output file in 'test/'
         try:
-            processed_dataframe.to_csv(output_file_path, index=False)
+            processed_dataframe.to_csv(output_file_path, index=True)
             print(f"\nProcessed data saved to: {output_file_path}")
         except Exception as e:
             print(f"Error saving processed data to CSV: {e}")
