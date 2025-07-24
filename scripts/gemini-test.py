@@ -1,0 +1,87 @@
+
+import pyabc
+import os
+import sys
+from argparse import ArgumentParser
+
+# Add the src directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
+from methabc.simulate import log_model_abc
+from methabc.distance import CombinedDistance
+from methabc.utils import import_data, view_pyabc_log
+from pyabc.sampler import RedisEvalParallelSampler
+
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("-d", "--data_path", type=str,
+                        default="/home/vesmanojlovic/Documents/github_repos/methABC/test/ground_truth.dat",
+                        help="Path to the ground truth data file.")
+    parser.add_argument("--db_path", type=str,
+                        default="/home/vesmanojlovic/Documents/github_repos/methABC/test/redis_truth_style.db",
+                        help="Path for the new ABC database.")
+    parser.add_argument("--log_path", type=str,
+                        default="/home/vesmanojlovic/Documents/github_repos/methABC/test/redis_truth_style.log",
+                        help="Path for the run log.")
+    parser.add_argument("--redis_host", type=str, default="10.10.0.21", help="Redis server host.")
+    parser.add_argument("--redis_port", type=int, default=2166, help="Redis server port.")
+
+    args = parser.parse_args()
+
+    # --- Setup ---
+    db_path_sqlite = f"sqlite:///{args.db_path}"
+    if os.path.exists(args.db_path):
+        os.remove(args.db_path)
+
+    view_pyabc_log(log_path=args.log_path)
+
+    # --- Load Observed Data ---
+    observation = import_data(args.data_path)
+
+    # --- PyABC Setup ---
+    unif_params = {
+        'meth_rate': (-4, -2),
+        'demeth_rate': (-4, -2),
+        'init_migration_rate': (-3.3, -1),
+        'mu_driver_birth': (-5, -2),
+        's_driver_birth': (0, .2),
+    }
+
+    prior = pyabc.Distribution(
+        **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
+    )
+
+    # --- Redis Sampler ---
+    print(f"Setting up redis_sampler on {args.redis_host}:{args.redis_port}...")
+    redis_sampler = RedisEvalParallelSampler(host=args.redis_host, port=args.redis_port)
+    print("Done.")
+
+    distance = CombinedDistance()
+
+    abc = pyabc.ABCSMC(
+        log_model_abc,
+        prior,
+        distance,
+        population_size=1000,
+        sampler=redis_sampler,
+    )
+
+    # --- Run ABC-SMC ---
+    abc.new(
+        db=db_path_sqlite,
+        observed_sum_stat={"data": observation},
+    )
+
+    print(f"ABC-SMC run started. DB will be at: {db_path_sqlite}")
+    print(f"Connect workers to redis://{args.redis_host}:{args.redis_port}")
+
+    abc.run(max_nr_populations=25, minimum_epsilon=0, min_acceptance_rate=0.03)
+
+    print("ABC-SMC run finished.")
+    print(f"Final results and history saved to: {db_path_sqlite}")
+    print(f"Run log saved to: {args.log_path}")
+
+
+if __name__ == "__main__":
+    main()
