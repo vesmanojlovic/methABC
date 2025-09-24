@@ -2,31 +2,20 @@ import numpy as np
 import pandas as pd
 import pyabc
 import ot as pot
+import random
 
-from itertools import permutations
+from itertools import permutations, product
 from math import factorial
 from scipy.stats import wasserstein_distance
+from scipy.optimize import linear_sum_assignment
 
 
-class CombinedDistance(pyabc.Distance):
+class BaseDistance(pyabc.Distance):
     """
-    A custom, stateful distance class for the methABC project.
-
-    This class implements a combined distance metric that includes:
-    1.  1D Wasserstein distance between individual deme methylation arrays.
-    2.  L2 distance between the inter-deme distance matrices.
-    3.  2D Wasserstein distance between 2D histograms of deme-pair correlations.
-
-    It solves the assignment problem by performing an exhaustive brute-force search
-    over all valid permutations, ensuring the true minimum of the combined, scaled
-    distance is found.
-
-    Normalization is handled adaptively for each generation using the median
-    absolute deviation (MAD) of each distance component, calculated in the
-    `initialize` method.
+    Base class for distance functions.
     """
 
-    def __init__(self, num_bins=100):
+    def __init__(self, num_bins=20):
         super().__init__()
         self.num_bins = num_bins
         self.scale_1d_wass = 1.0
@@ -43,7 +32,6 @@ class CombinedDistance(pyabc.Distance):
     def initialize(self, t, get_sample, x_0, total_sims):
         """
         Initializes the distance function by calculating normalization constants.
-        This method is called by the ABCSMC sampler at the start of each generation.
         """
         sample = get_sample()
         observed_sum_stat = x_0
@@ -52,7 +40,6 @@ class CombinedDistance(pyabc.Distance):
         raw_distances_l2 = []
         raw_distances_2d = []
 
-        # Use a default, non-optimal permutation for speed during initialization
         for particle in sample.all_particles:
             sim_sum_stat = particle.sum_stat
             dist_1d, dist_l2, dist_2d = self._calculate_distances_for_permutation(
@@ -69,62 +56,6 @@ class CombinedDistance(pyabc.Distance):
         if self.scale_1d_wass == 0: self.scale_1d_wass = 1.0
         if self.scale_l2 == 0: self.scale_l2 = 1.0
         if self.scale_2d_wass == 0: self.scale_2d_wass = 1.0
-
-    def __call__(self, x, y, t, par):
-        """
-        The main distance calculation method.
-        Performs a brute-force search over all permutations.
-        """
-        sim_df = x['data']
-        real_df = y['data']
-
-        min_total_scaled_dist = float('inf')
-
-        # --- Normal Assignment ---
-        dist_normal = self._brute_force_search(sim_df, real_df, mirrored=False)
-        
-        # --- Mirrored Assignment ---
-        dist_mirrored = self._brute_force_search(sim_df, real_df, mirrored=True)
-
-        return min(dist_normal, dist_mirrored)
-
-    def _brute_force_search(self, sim_df, real_df, mirrored):
-        """Performs the brute-force search for a given orientation."""
-        min_scaled_dist_for_orientation = float('inf')
-
-        sim_left = sim_df[sim_df['Side'] == 'left']
-        sim_right = sim_df[sim_df['Side'] == 'right']
-
-        real_A_cols = [col for col in real_df.columns if 'A' in col or 'testA' in col]
-        real_B_cols = [col for col in real_df.columns if 'B' in col or 'testB' in col]
-        real_A = real_df[real_A_cols]
-        real_B = real_df[real_B_cols]
-
-        if mirrored:
-            real_left, real_right = real_B, real_A
-        else:
-            real_left, real_right = real_A, real_B
-
-        left_perms = list(permutations(range(len(sim_left))))
-        right_perms = list(permutations(range(len(sim_right))))
-
-        for l_perm in left_perms:
-            for r_perm in right_perms:
-                perm_sim_left = sim_left.iloc[list(l_perm)]
-                perm_sim_right = sim_right.iloc[list(r_perm)]
-                perm_sim_df = pd.concat([perm_sim_left, perm_sim_right]).reset_index(drop=True)
-
-                dist_1d, dist_l2, dist_2d = self._calculate_distances_for_permutation(
-                    perm_sim_df, real_df
-                )
-                
-                scaled_dist = (dist_1d / self.scale_1d_wass) + \
-                              (dist_l2 / self.scale_l2) + \
-                              (dist_2d / self.scale_2d_wass)
-                
-                min_scaled_dist_for_orientation = min(min_scaled_dist_for_orientation, scaled_dist)
-
-        return min_scaled_dist_for_orientation
 
     def _calculate_distances_for_permutation(self, perm_sim_df, real_df, default_perm=False):
         """Calculates the three distance components for a single, given permutation."""
@@ -181,3 +112,215 @@ class CombinedDistance(pyabc.Distance):
                 else:
                     matrix[i, j] = 0
         return matrix
+
+
+class CombinedDistance(BaseDistance):
+    """
+    A custom, stateful distance class for the methABC project.
+
+    This class implements a combined distance metric that includes:
+    1.  1D Wasserstein distance between individual deme methylation arrays.
+    2.  L2 distance between the inter-deme distance matrices.
+    3.  2D Wasserstein distance between 2D histograms of deme-pair correlations.
+
+    It solves the assignment problem by performing an exhaustive brute-force search
+    over all valid permutations, ensuring the true minimum of the combined, scaled
+    distance is found.
+
+    Normalization is handled adaptively for each generation using the median
+    absolute deviation (MAD) of each distance component, calculated in the
+    `initialize` method.
+    """
+
+    def __call__(self, x, y, t, par):
+        """
+        The main distance calculation method.
+        Performs a brute-force search over all permutations.
+        """
+        sim_df = x['data']
+        real_df = y['data']
+
+        # --- Normal Assignment ---
+        dist_normal = self._brute_force_search(sim_df, real_df, mirrored=False)
+        
+        # --- Mirrored Assignment ---
+        dist_mirrored = self._brute_force_search(sim_df, real_df, mirrored=True)
+
+        return min(dist_normal, dist_mirrored)
+
+    def _brute_force_search(self, sim_df, real_df, mirrored):
+        """Performs the brute-force search for a given orientation."""
+        min_scaled_dist_for_orientation = float('inf')
+
+        sim_left = sim_df[sim_df['Side'] == 'left']
+        sim_right = sim_df[sim_df['Side'] == 'right']
+
+        real_A_cols = [col for col in real_df.columns if 'A' in col or 'testA' in col]
+        real_B_cols = [col for col in real_df.columns if 'B' in col or 'testB' in col]
+        real_A = real_df[real_A_cols]
+        real_B = real_df[real_B_cols]
+
+        if mirrored:
+            real_left, real_right = real_B, real_A
+        else:
+            real_left, real_right = real_A, real_B
+
+        left_perms = list(permutations(range(len(sim_left))))
+        right_perms = list(permutations(range(len(sim_right))))
+
+        for l_perm in left_perms:
+            for r_perm in right_perms:
+                perm_sim_left = sim_left.iloc[list(l_perm)]
+                perm_sim_right = sim_right.iloc[list(r_perm)]
+                perm_sim_df = pd.concat([perm_sim_left, perm_sim_right]).reset_index(drop=True)
+
+                dist_1d, dist_l2, dist_2d = self._calculate_distances_for_permutation(
+                    perm_sim_df, real_df
+                )
+                
+                scaled_dist = (dist_1d / self.scale_1d_wass) + \
+                              (dist_l2 / self.scale_l2) + \
+                              (dist_2d / self.scale_2d_wass)
+                
+                min_scaled_dist_for_orientation = min(min_scaled_dist_for_orientation, scaled_dist)
+
+        return min_scaled_dist_for_orientation
+
+
+class AssignmentDistance(BaseDistance):
+    """
+    A custom distance class that uses the Hungarian algorithm for optimal assignment.
+    """
+
+    def __call__(self, x, y, t, par):
+        """
+        The main distance calculation method.
+        Uses linear sum assignment to find the optimal permutation.
+        """
+        sim_df = x['data']
+        real_df = y['data']
+
+        # --- Normal Assignment ---
+        dist_normal = self._assignment_search(sim_df, real_df, mirrored=False)
+        
+        # --- Mirrored Assignment ---
+        dist_mirrored = self._assignment_search(sim_df, real_df, mirrored=True)
+
+        return min(dist_normal, dist_mirrored)
+
+    def _assignment_search(self, sim_df, real_df, mirrored):
+        """Performs the assignment search for a given orientation."""
+        sim_left = sim_df[sim_df['Side'] == 'left']
+        sim_right = sim_df[sim_df['Side'] == 'right']
+
+        real_A_cols = [col for col in real_df.columns if 'A' in col or 'testA' in col]
+        real_B_cols = [col for col in real_df.columns if 'B' in col or 'testB' in col]
+        real_A = real_df[real_A_cols]
+        real_B = real_df[real_B_cols]
+
+        if mirrored:
+            real_left, real_right = real_B, real_A
+        else:
+            real_left, real_right = real_A, real_B
+
+        # Cost matrix for left demes
+        cost_matrix_left = np.zeros((len(sim_left), len(real_left.columns)))
+        for i in range(len(sim_left)):
+            for j in range(len(real_left.columns)):
+                cost_matrix_left[i, j] = wasserstein_distance(
+                    sim_left.iloc[i]['AverageArray'], real_left[real_left.columns[j]]
+                )
+        
+        row_ind_left, col_ind_left = linear_sum_assignment(cost_matrix_left)
+        
+        # Cost matrix for right demes
+        cost_matrix_right = np.zeros((len(sim_right), len(real_right.columns)))
+        for i in range(len(sim_right)):
+            for j in range(len(real_right.columns)):
+                cost_matrix_right[i, j] = wasserstein_distance(
+                    sim_right.iloc[i]['AverageArray'], real_right[real_right.columns[j]]
+                )
+
+        row_ind_right, col_ind_right = linear_sum_assignment(cost_matrix_right)
+
+        perm_sim_left = sim_left.iloc[row_ind_left]
+        perm_sim_right = sim_right.iloc[row_ind_right]
+        perm_sim_df = pd.concat([perm_sim_left, perm_sim_right]).reset_index(drop=True)
+
+        dist_1d, dist_l2, dist_2d = self._calculate_distances_for_permutation(
+            perm_sim_df, real_df
+        )
+        
+        scaled_dist = (dist_1d / self.scale_1d_wass) + \
+                      (dist_l2 / self.scale_l2) + \
+                      (dist_2d / self.scale_2d_wass)
+
+        return scaled_dist
+
+
+class SampledDistance(BaseDistance):
+    """
+    A custom distance class that uses random sampling of permutations.
+    """
+
+    def __init__(self, num_bins=20, sample_size=100):
+        super().__init__(num_bins=num_bins)
+        self.sample_size = sample_size
+
+    def __call__(self, x, y, t, par):
+        """
+        The main distance calculation method.
+        Samples a subset of permutations.
+        """
+        sim_df = x['data']
+        real_df = y['data']
+
+        # --- Normal Assignment ---
+        dist_normal = self._sampled_search(sim_df, real_df, mirrored=False)
+        
+        # --- Mirrored Assignment ---
+        dist_mirrored = self._sampled_search(sim_df, real_df, mirrored=True)
+
+        return min(dist_normal, dist_mirrored)
+
+    def _sampled_search(self, sim_df, real_df, mirrored):
+        """Performs the sampled search for a given orientation."""
+        min_scaled_dist_for_orientation = float('inf')
+
+        sim_left = sim_df[sim_df['Side'] == 'left']
+        sim_right = sim_df[sim_df['Side'] == 'right']
+
+        real_A_cols = [col for col in real_df.columns if 'A' in col or 'testA' in col]
+        real_B_cols = [col for col in real_df.columns if 'B' in col or 'testB' in col]
+        real_A = real_df[real_A_cols]
+        real_B = real_df[real_B_cols]
+
+        if mirrored:
+            real_left, real_right = real_B, real_A
+        else:
+            real_left, real_right = real_A, real_B
+
+        left_perms = list(permutations(range(len(sim_left))))
+        right_perms = list(permutations(range(len(sim_right))))
+
+        all_perms = list(product(left_perms, right_perms))
+
+        if len(all_perms) > self.sample_size:
+            all_perms = random.sample(all_perms, self.sample_size)
+
+        for l_perm, r_perm in all_perms:
+            perm_sim_left = sim_left.iloc[list(l_perm)]
+            perm_sim_right = sim_right.iloc[list(r_perm)]
+            perm_sim_df = pd.concat([perm_sim_left, perm_sim_right]).reset_index(drop=True)
+
+            dist_1d, dist_l2, dist_2d = self._calculate_distances_for_permutation(
+                perm_sim_df, real_df
+            )
+            
+            scaled_dist = (dist_1d / self.scale_1d_wass) + \
+                          (dist_l2 / self.scale_l2) + \
+                          (dist_2d / self.scale_2d_wass)
+            
+            min_scaled_dist_for_orientation = min(min_scaled_dist_for_orientation, scaled_dist)
+
+        return min_scaled_dist_for_orientation

@@ -1,5 +1,5 @@
 from methabc.simulate import simulate_abc, simulate
-from methabc.distance import CombinedDistance
+from methabc.distance import CombinedDistance, AssignmentDistance, SampledDistance
 from pyabc.sampler import RedisEvalParallelSampler
 
 import pyabc
@@ -28,12 +28,14 @@ def main():
     }
     print("Generating synthetic data...")
     observation = simulate(obs_param)
-    observed_matrix = compute_deme_matrix(observation)
     print("Done!")
     print("Setting up redis_sampler...")
     redis_sampler = RedisEvalParallelSampler(host="127.0.0.1", port=2666)
 
-    distance = CombinedDistance()
+    # Choose one of the distance functions below:
+    # distance = CombinedDistance(num_bins=20)  # Brute-force
+    distance = AssignmentDistance(num_bins=20)  # Hungarian algorithm
+    # distance = SampledDistance(num_bins=20, sample_size=100)  # Random sampling
 
     abc = pyabc.ABCSMC(
         simulate_abc,
@@ -48,7 +50,6 @@ def main():
         db="sqlite:///" + "tmp/example.db",
         observed_sum_stat={"data": observation},
         gt_par=obs_param,
-        meta_info={"initial_dist_matrix": observed_matrix},
     )
 
     history = abc.run(max_nr_populations=10)
