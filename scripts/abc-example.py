@@ -20,8 +20,8 @@ def main():
     parser.add_argument("--db_path", type=str,
                         default="abc_example.db",
                         help="Path for the new ABC database.")
-    parser.add_argument("--redis_host", type=str, default="127.0.0.1", help="Redis server host.")
-    parser.add_argument("--redis_port", type=int, default=2666, help="Redis server port.")
+    parser.add_argument("--redis_host", type=str, default="10.10.0.21", help="Redis server host.")
+    parser.add_argument("--redis_port", type=int, default=2166, help="Redis server port.")
     parser.add_argument("--distance", type=str, default="assignment",
                         help="Distance function to use. One of: combined, assignment, sampled.")
 
@@ -55,7 +55,7 @@ def main():
         'demeth_rate': (-4, -2),
         'init_migration_rate': (-3.3, -1),
         'mu_driver_birth': (-5, -2),
-        's_driver_birth': (0, .5),
+        's_driver_birth': (0, .4),
     }
 
     prior = pyabc.Distribution(
