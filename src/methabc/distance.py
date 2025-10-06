@@ -60,10 +60,17 @@ class BaseDistance(pyabc.Distance):
     def _calculate_distances_for_permutation(self, perm_sim_df, real_df, default_perm=False):
         """Calculates the three distance components for a single, given permutation."""
         
+        is_synthetic_real = 'AverageArray' in real_df.columns
+
         # 1. 1D Wasserstein Distance
         dist_1d = 0
         for i in range(len(perm_sim_df)):
-            dist_1d += wasserstein_distance(perm_sim_df.iloc[i]['AverageArray'], real_df[real_df.columns[i]])
+            sim_array = perm_sim_df.iloc[i]['AverageArray']
+            if is_synthetic_real:
+                real_array = real_df.iloc[i]['AverageArray']
+            else:
+                real_array = real_df[real_df.columns[i]]
+            dist_1d += wasserstein_distance(sim_array, real_array)
 
         # 2. L2 Distance
         sim_matrix = self._compute_inter_deme_matrix(perm_sim_df)
@@ -77,8 +84,11 @@ class BaseDistance(pyabc.Distance):
             for i, j in unique_pairs:
                 # Simulated data histogram
                 sim_hist = np.histogram2d(perm_sim_df.iloc[i]['AverageArray'], perm_sim_df.iloc[j]['AverageArray'], bins=self.num_bins)[0]
-                # Real data histogram
-                real_hist = np.histogram2d(real_df[real_df.columns[i]], real_df[real_df.columns[j]], bins=self.num_bins)[0]
+                
+                if is_synthetic_real:
+                    real_hist = np.histogram2d(real_df.iloc[i]['AverageArray'], real_df.iloc[j]['AverageArray'], bins=self.num_bins)[0]
+                else:
+                    real_hist = np.histogram2d(real_df[real_df.columns[i]], real_df[real_df.columns[j]], bins=self.num_bins)[0]
                 
                 # Normalize histograms
                 if np.sum(sim_hist) > 0: sim_hist /= np.sum(sim_hist)
