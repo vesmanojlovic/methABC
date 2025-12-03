@@ -55,7 +55,7 @@ def main():
         'demeth_rate': (-4, -2),
         'init_migration_rate': (-3.3, -1),
         'mu_driver_birth': (-5, -2),
-        's_driver_birth': (0, .4),
+        's_driver_birth': (0, .3),
     }
 
     prior = pyabc.Distribution(

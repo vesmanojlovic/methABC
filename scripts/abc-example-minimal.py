@@ -1,4 +1,3 @@
-
 import pyabc
 import os
 import sys
@@ -83,7 +82,7 @@ def main():
         log_model_abc,
         prior,
         distance,
-        population_size=10,
+        population_size=1,
         sampler=redis_sampler,
     )
 
