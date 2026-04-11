@@ -21,13 +21,7 @@
 # Logs go to /users/adby616/archive/abc-temp/ (must exist).
 
 set -eo pipefail
-
-# All output goes to a real log file — Slurm's -o/-e are block-buffered
-# so prints vanish when a job crashes. Python side does the same via
-# its FileHandler logger.
-mkdir -p outputs/k_sensitivity
-LOGFILE="outputs/k_sensitivity/slurm_${SLURM_JOB_ID:-manual}.log"
-exec >"$LOGFILE" 2>&1
+set -x
 
 echo "=== Job diagnostics ==="
 echo "Host:     $(hostname)"
@@ -59,8 +53,8 @@ mkdir -p outputs/k_sensitivity/matrices
 
 if [[ "${1:-}" == "--dry-run" ]]; then
     echo "=== DRY RUN: one simulation only ==="
-    python scripts/k_sensitivity.py run --dry-run
+    python -u scripts/k_sensitivity.py run --dry-run
     exit $?
 fi
 
-python scripts/k_sensitivity.py run --local --cores 48
+python -u scripts/k_sensitivity.py run --local --cores 48
