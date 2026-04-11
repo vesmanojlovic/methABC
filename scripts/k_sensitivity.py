@@ -41,6 +41,7 @@ import os
 import sys
 import json
 import time
+import logging
 import subprocess
 import tempfile
 import shutil
@@ -50,6 +51,31 @@ from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
+
+_LOG = logging.getLogger('ksens')
+
+
+def setup_logging():
+    """Write to a real file + stderr. FileHandler flushes per record so
+    output survives Slurm stdout buffering and crashes."""
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    job_id = os.environ.get('SLURM_JOB_ID', 'local')
+    log_path = OUTPUT_DIR / f"k_sensitivity_{job_id}.log"
+
+    fmt = logging.Formatter('%(asctime)s %(levelname)s %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S')
+    fh = logging.FileHandler(log_path, mode='a')
+    fh.setFormatter(fmt)
+    sh = logging.StreamHandler(sys.stderr)
+    sh.setFormatter(fmt)
+
+    _LOG.handlers.clear()
+    _LOG.addHandler(fh)
+    _LOG.addHandler(sh)
+    _LOG.setLevel(logging.INFO)
+    _LOG.propagate = False
+    _LOG.info("Log file: %s", log_path)
+    return log_path
 
 # ── Config ──────────────────────────────────────────────────────────
 
@@ -80,9 +106,14 @@ def read_template():
         return f.readlines()
 
 
-def run_single_sim(params, K, seed):
-    """Run one simulation. Returns 8x8 distance matrix or None."""
+def run_single_sim(params, K, seed, verbose=False):
+    """Run one simulation. Returns 8x8 distance matrix or None.
+
+    verbose=True prints methdemon stderr and keeps the tmpdir on failure —
+    use for dry runs / debugging, not for parallel batches.
+    """
     tmpdir = tempfile.mkdtemp(prefix=f'ksens_K{K}_')
+    keep_tmpdir = False
     try:
         lines = list(_TEMPLATE_LINES)
         full = {}
@@ -118,10 +149,21 @@ def run_single_sim(params, K, seed):
             timeout=1800,
         )
         if result.returncode != 0:
+            if verbose:
+                keep_tmpdir = True
+                _LOG.error("methdemon exited %d", result.returncode)
+                _LOG.error("  tmpdir: %s", tmpdir)
+                _LOG.error("  stderr: %s",
+                           result.stderr.decode(errors='replace')[-2000:])
+                _LOG.error("  stdout: %s",
+                           result.stdout.decode(errors='replace')[-500:])
             return None
 
         data_path = os.path.join(tmpdir, 'final_demes.csv')
         if not os.path.exists(data_path):
+            if verbose:
+                keep_tmpdir = True
+                _LOG.error("final_demes.csv missing in %s", tmpdir)
             return None
 
         df = pd.read_csv(data_path, header=0)
@@ -136,10 +178,14 @@ def run_single_sim(params, K, seed):
 
         return compute_distance_matrix(df)
 
-    except Exception:
+    except Exception as exc:
+        if verbose:
+            keep_tmpdir = True
+            _LOG.exception("Python-side exception: %s", exc)
         return None
     finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
+        if not keep_tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def compute_distance_matrix(df):
@@ -210,11 +256,9 @@ def cmd_generate(args):
     with open(out_path, 'w') as f:
         json.dump(config, f, indent=2)
 
-    print(f"Generated {n} parameter sets × {len(K_VALUES)} K values "
-          f"= {config['n_tasks']} tasks")
-    print(f"Saved to {out_path}")
-    print(f"\nFor Slurm: sbatch --array=0-{config['n_tasks']-1} "
-          f"scripts/k_sensitivity_slurm.sh")
+    _LOG.info("Generated %d parameter sets x %d K values = %d tasks",
+              n, len(K_VALUES), config['n_tasks'])
+    _LOG.info("Saved to %s", out_path)
 
 
 def cmd_run(args):
@@ -223,12 +267,15 @@ def cmd_run(args):
     _TEMPLATE_LINES = read_template()
 
     if not os.path.exists(MODEL_PATH):
-        print(f"ERROR: {MODEL_PATH} not found. Run from methabc root.")
+        _LOG.error("%s not found. Run from methabc root.", MODEL_PATH)
+        sys.exit(1)
+    if not os.path.exists(CONFIG_TEMPLATE):
+        _LOG.error("%s not found. Run from methabc root.", CONFIG_TEMPLATE)
         sys.exit(1)
 
     params_path = OUTPUT_DIR / "params.json"
     if not params_path.exists():
-        print("ERROR: params.json not found. Run 'generate' first.")
+        _LOG.error("params.json not found. Run 'generate' first.")
         sys.exit(1)
 
     with open(params_path) as f:
@@ -240,6 +287,29 @@ def cmd_run(args):
 
     MATRIX_DIR.mkdir(parents=True, exist_ok=True)
 
+    if args.dry_run:
+        _LOG.info("=== Dry run: single simulation ===")
+        _LOG.info("  model:   %s", MODEL_PATH)
+        _LOG.info("  config:  %s", CONFIG_TEMPLATE)
+        _LOG.info("  params:  %s", params_path)
+        _LOG.info("  n_sets:  %d, K_values: %s", n_sets, K_VALUES)
+        _LOG.info("  Running param_set=0, K=%d, seed=%d...",
+                  K_BASELINE, seeds[0])
+        t0 = time.time()
+        mat = run_single_sim(param_sets[0], K_BASELINE, seeds[0],
+                             verbose=True)
+        elapsed = time.time() - t0
+        if mat is None:
+            _LOG.error("FAILED after %.1fs — simulation returned None.",
+                       elapsed)
+            _LOG.error("Check methdemon stderr by running manually:")
+            _LOG.error("  %s <tmpdir> config.dat", MODEL_PATH)
+            sys.exit(1)
+        _LOG.info("  OK in %.1fs. Matrix shape: %s, mean: %.4f, max: %.4f",
+                  elapsed, mat.shape, mat.mean(), mat.max())
+        _LOG.info("Dry run passed.")
+        return
+
     # Build task list: (param_index, K)
     tasks = []
     for i in range(n_sets):
@@ -247,8 +317,7 @@ def cmd_run(args):
             tasks.append((i, K))
 
     if args.local:
-        # Run all tasks locally with multiprocessing
-        print(f"Running {len(tasks)} tasks on {args.cores} cores...")
+        _LOG.info("Running %d tasks on %d cores...", len(tasks), args.cores)
         pool_args = [(i, K, param_sets[i], seeds[i]) for i, K in tasks]
 
         t0 = time.time()
@@ -258,33 +327,33 @@ def cmd_run(args):
 
         n_ok = sum(results)
         elapsed = time.time() - t0
-        print(f"Done: {n_ok}/{len(tasks)} successful, {elapsed:.0f}s")
+        _LOG.info("Done: %d/%d successful, %.0fs", n_ok, len(tasks), elapsed)
 
     else:
-        # Single task from SLURM_ARRAY_TASK_ID
         task_id = args.task_id
         if task_id is None:
             task_id = os.environ.get('SLURM_ARRAY_TASK_ID')
         if task_id is None:
-            print("ERROR: No --task-id and no SLURM_ARRAY_TASK_ID set.")
-            print("Use --local for local runs, or submit via Slurm.")
+            _LOG.error("No --task-id and no SLURM_ARRAY_TASK_ID set.")
+            _LOG.error("Use --local for local runs, or submit via Slurm.")
             sys.exit(1)
 
         task_id = int(task_id)
         if task_id >= len(tasks):
-            print(f"Task {task_id} out of range (max {len(tasks)-1})")
+            _LOG.error("Task %d out of range (max %d)",
+                       task_id, len(tasks) - 1)
             sys.exit(1)
 
         i, K = tasks[task_id]
-        print(f"Task {task_id}: param_set={i}, K={K}")
+        _LOG.info("Task %d: param_set=%d, K=%d", task_id, i, K)
 
         mat = run_single_sim(param_sets[i], K, seeds[i])
         if mat is not None:
             out = MATRIX_DIR / f"mat_{i:03d}_K{K}.npy"
             np.save(out, mat)
-            print(f"  Saved: {out}")
+            _LOG.info("  Saved: %s", out)
         else:
-            print(f"  FAILED (no output)")
+            _LOG.error("  FAILED (no output)")
 
 
 def cmd_collect(args):
@@ -313,12 +382,13 @@ def cmd_collect(args):
         if all(i in results[K] for K in K_VALUES):
             valid.append(i)
 
-    print(f"Valid parameter sets (all K succeeded): {len(valid)}/{n_sets}")
+    _LOG.info("Valid parameter sets (all K succeeded): %d/%d",
+              len(valid), n_sets)
     for K in K_VALUES:
-        print(f"  K={K:>5d}: {len(results[K])}/{n_sets} completed")
+        _LOG.info("  K=%5d: %d/%d completed", K, len(results[K]), n_sets)
 
     if len(valid) < 3:
-        print("Not enough valid sets to analyse.")
+        _LOG.error("Not enough valid sets to analyse.")
         sys.exit(1)
 
     # Frobenius distances relative to K=100
@@ -328,12 +398,12 @@ def cmd_collect(args):
             d = np.sqrt(np.sum((results[K_BASELINE][i] - results[K][i]) ** 2))
             frob[K].append(d)
 
-    print(f"\n{'K':>6s}  {'mean':>8s}  {'median':>8s}  {'std':>8s}")
+    _LOG.info("%6s  %8s  %8s  %8s", 'K', 'mean', 'median', 'std')
     summary = {'n_sets': n_sets, 'n_valid': len(valid), 'comparisons': {}}
     for K in sorted(frob.keys()):
         d = frob[K]
         m, med, s = np.mean(d), np.median(d), np.std(d)
-        print(f"{K:>6d}  {m:8.4f}  {med:8.4f}  {s:8.4f}")
+        _LOG.info("%6d  %8.4f  %8.4f  %8.4f", K, m, med, s)
         summary['comparisons'][str(K)] = {
             'mean_frobenius': float(m), 'median_frobenius': float(med),
             'std_frobenius': float(s), 'n': len(d),
@@ -374,12 +444,12 @@ def cmd_collect(args):
     fig_path = OUTPUT_DIR / 'k_sensitivity.pdf'
     fig.savefig(fig_path, bbox_inches='tight', dpi=300)
     plt.close(fig)
-    print(f"\nFigure: {fig_path}")
+    _LOG.info("Figure: %s", fig_path)
 
     json_path = OUTPUT_DIR / 'k_sensitivity.json'
     with open(json_path, 'w') as f:
         json.dump(summary, f, indent=2)
-    print(f"Results: {json_path}")
+    _LOG.info("Results: %s", json_path)
 
 
 # ── Main ────────────────────────────────────────────────────────────
@@ -397,10 +467,13 @@ def main():
     run.add_argument('--cores', type=int, default=20)
     run.add_argument('--task-id', type=int, default=None,
                      help='Single task index (overrides SLURM_ARRAY_TASK_ID)')
+    run.add_argument('--dry-run', action='store_true',
+                     help='Run one simulation end-to-end and exit (sanity check)')
 
     sub.add_parser('collect', help='Gather results and plot')
 
     args = parser.parse_args()
+    setup_logging()
 
     if args.command == 'generate':
         cmd_generate(args)
