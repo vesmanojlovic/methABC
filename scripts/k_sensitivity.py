@@ -314,7 +314,17 @@ def cmd_run(args):
     tasks = []
     for i in range(n_sets):
         for K in K_VALUES:
+            if args.k_filter is not None and K != args.k_filter:
+                continue
+            if args.skip_existing:
+                out = MATRIX_DIR / f"mat_{i:03d}_K{K}.npy"
+                if out.exists():
+                    continue
             tasks.append((i, K))
+
+    if not tasks:
+        _LOG.info("No tasks to run (all filtered or already complete).")
+        return
 
     if args.local:
         _LOG.info("Running %d tasks on %d cores...", len(tasks), args.cores)
@@ -469,6 +479,10 @@ def main():
                      help='Single task index (overrides SLURM_ARRAY_TASK_ID)')
     run.add_argument('--dry-run', action='store_true',
                      help='Run one simulation end-to-end and exit (sanity check)')
+    run.add_argument('--k-filter', type=int, default=None,
+                     help='Only run tasks for this K value')
+    run.add_argument('--skip-existing', action='store_true',
+                     help='Skip tasks whose .npy output already exists')
 
     sub.add_parser('collect', help='Gather results and plot')
 
