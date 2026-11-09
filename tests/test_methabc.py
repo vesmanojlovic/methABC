@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 
 import numpy as np
 import pandas as pd
@@ -85,6 +87,18 @@ def test_simulate():
     assert len(df[df.Side == 'left']) == 2
     other = simulate(params, left_demes=2, right_demes=6)
     assert not np.allclose(np.stack(df.AverageArray), np.stack(other.AverageArray))
+
+
+@needs_methdemon
+def test_synthetic_data(tmp_path):
+    script = os.path.join(repo_dir, "scripts/synthetic_data.py")
+    for name in ["a", "b"]:
+        subprocess.run([sys.executable, script, "-o", str(tmp_path / name), "-l", "3", "-r", "5"], check=True)
+    data = import_data(tmp_path / "a.csv")
+    assert side_counts(data) == (3, 5)
+    assert data.equals(import_data(tmp_path / "b.csv"))
+    gt = pd.read_csv(tmp_path / "a_params.csv").iloc[0]
+    assert gt['meth_rate'] == pytest.approx(np.log10(0.0022))
 
 
 @needs_methdemon

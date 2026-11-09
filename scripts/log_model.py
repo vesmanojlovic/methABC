@@ -5,6 +5,7 @@ from pyabc.sampler import RedisEvalParallelSampler, MulticoreEvalParallelSampler
 
 import os
 import pyabc
+import pandas as pd
 import multiprocessing
 from functools import partial
 from argparse import ArgumentParser
@@ -12,8 +13,13 @@ from argparse import ArgumentParser
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument("-d", "--data_id", type=str,
-                        help="ID of the data set in the data folder")
+    data_group = parser.add_mutually_exclusive_group(required=True)
+    data_group.add_argument("-d", "--data_id", type=str,
+                            help="ID of the data set in the data folder")
+    data_group.add_argument("--data_path", type=str,
+                            help="path to a data file, e.g. from synthetic_data.py")
+    parser.add_argument("--ground_truth", type=str,
+                        help="parameter file from synthetic_data.py, stored in the database")
     parser.add_argument("-K", "--carrying_capacity", type=int, default=100,
                         help="deme carrying capacity")
     parser.add_argument("-t", "--turnover", type=float, default=0,
@@ -37,7 +43,6 @@ def main():
     parser.add_argument("--port", type=int, default=2166,
                         help="redis server port")
     args = parser.parse_args()
-    data_id = args.data_id
 
     unif_params = {
         'meth_rate': (-4, -2),
@@ -51,7 +56,16 @@ def main():
         **{key: pyabc.RV("uniform", a, b - a) for key, (a, b) in unif_params.items()},
     )
 
-    data_path = os.path.join(repo_dir, "data/individual/tumour_" + data_id + ".csv")
+    if args.data_path is None:
+        data_id = args.data_id
+        data_path = os.path.join(repo_dir, "data/individual/tumour_" + data_id + ".csv")
+    else:
+        data_id = os.path.splitext(os.path.basename(args.data_path))[0]
+        data_path = args.data_path
+
+    gt_par = None
+    if args.ground_truth is not None:
+        gt_par = pd.read_csv(args.ground_truth).iloc[0].to_dict()
 
     observation = import_data(data_path)
 
@@ -109,6 +123,7 @@ def main():
     abc_id = abc.new(
         db="sqlite:///" + os.path.join(repo_dir, "tmp", "log_model_" + run_name + ".db"),
         observed_sum_stat={"data": observation},
+        gt_par=gt_par,
         meta_info={"initial_dist_matrix": observed_matrix},
     )
 

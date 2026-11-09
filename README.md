@@ -32,3 +32,13 @@ python scripts/log_model.py -d D -n 8
 The output database is written to `tmp/`. Run `python scripts/log_model.py -h` for all options (carrying capacity, turnover, distance, epsilon schedule, population size, etc.).
 
 Inference is slow on a laptop. On a cluster, start a Redis server, run `log_model.py` without `-n` (pointing `--host` and `--port` to the server), and start workers with `scripts/redis_worker_long.sh` or `scripts/redis_worker_short.sh` (see the usage at the top of each script).
+
+## Ground truth recovery
+To check that methabc recovers known parameters, first simulate a synthetic tumour
+```
+python scripts/synthetic_data.py
+```
+This writes `tmp/synthetic.csv` (same format as the tumour data) and its parameters to `tmp/synthetic_params.csv`. The defaults are the parameters of the synthetic tumour in the paper, run `-h` to change them, the number of glands on each side, or the seed. Then run inference on it, storing the true parameters in the database
+```
+python scripts/log_model.py --data_path tmp/synthetic.csv --ground_truth tmp/synthetic_params.csv -n 8
+```
