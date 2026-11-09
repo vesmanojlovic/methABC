@@ -1,17 +1,21 @@
 #!/bin/bash
 
-# slurm settings
-#SBATCH -D /users/adby616/methABC
-#SBATCH --partition=nodes
-#SBATCH --nodes=8
-#SBATCH --ntasks-per-node=48
-#SBATCH --mem=0
-#SBATCH --time=72:00:00
-#SBATCH -o /users/adby616/archive/abc-temp/%x_%j.o
-#SBATCH -e /users/adby616/archive/abc-temp/%x_%j.e
+# usage:
+# sbatch -D <methabc_dir> --partition=<partition> --nodes=<nodes> --ntasks-per-node=<tasks> \
+#     --mem=<mem> --time=<time> -o <log_dir>/%x_%j.o -e <log_dir>/%x_%j.e \
+#     scripts/redis_worker_short.sh <host> <port> <runtime> <processes>
+
+if [ "$#" -ne 4 ]; then
+    echo "usage: redis_worker_short.sh <host> <port> <runtime> <processes>"
+    exit 1
+fi
+
+host=$1
+port=$2
+runtime=$3
+processes=$4
 
 # prepare environment, e.g. set path
 
 # run
-abc-redis-worker --host=10.10.0.21 --port=2166 --runtime=3d --processes=384
-
+abc-redis-worker --host=$host --port=$port --runtime=$runtime --processes=$processes

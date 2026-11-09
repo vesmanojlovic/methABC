@@ -109,9 +109,67 @@ def ith_df_perm(df, i):
     return perm_df.reset_index(drop=True)
 
 
+def distance_terms(dict1, dict2):
+    """
+    Compute the L2 and Wasserstein terms of the total distance between two
+    tumours, for the permutation of simulated glands that minimises their sum.
+    Args:
+        dict1, dict2: simulated and real data (in either order)
+    Returns:
+        l2, wasserstein (1000, 1000 if the simulation failed)
+    """
+    if dict1['data'] is None or dict2['data'] is None:
+        return 1000, 1000
+    if 'Side' in dict1['data'].columns:
+        sim_df, fd = dict1['data'], dict2['data'] # simulated data, real data
+    else:
+        sim_df, fd = dict2['data'], dict1['data']
+    if sim_df.shape[0] != fd.shape[1]:
+        return 1000, 1000
+    sim_df = sim_df.sort_values(by=['Side', 'OriginTime']).reset_index(drop=True)
+    num_l_demes = len(sim_df[sim_df['Side'] == 'left'])
+    num_demes = sim_df.shape[0]
+
+    sim = np.stack(sim_df.AverageArray.values)
+    obs = fd.values.T
+    sim_matrix = ((sim[:, None, :] - sim[None, :, :]) ** 2).sum(-1) / sim.shape[1]
+    obs_matrix = ((obs[:, None, :] - obs[None, :, :]) ** 2).sum(-1) / obs.shape[1]
+    wass = np.array([[wasserstein_distance(sim[i], obs[j]) for j in range(num_demes)]
+                     for i in range(num_demes)])
+
+    perms = np.array([l + r for l in permutations(range(num_l_demes))
+                      for r in permutations(range(num_l_demes, num_demes))])
+    l2 = np.sqrt(np.sum((sim_matrix[perms[:, :, None], perms[:, None, :]] - obs_matrix) ** 2, axis=(1, 2)) / 2)
+    wass = wass[perms, np.arange(num_demes)].sum(axis=1)
+    best = np.argmin(l2 + wass)
+    return float(l2[best]), float(wass[best])
+
+
 def total_distance(dict1, dict2):
     """
     Compute the total distance between two tumours.
+    Same result as total_distance_loop.
+    """
+    return min(1000, sum(distance_terms(dict1, dict2)))
+
+
+def l2_term(dict1, dict2):
+    """
+    L2 term of total_distance, for use with pyabc.AdaptiveAggregatedDistance.
+    """
+    return distance_terms(dict1, dict2)[0]
+
+
+def wasserstein_term(dict1, dict2):
+    """
+    Wasserstein term of total_distance, for use with pyabc.AdaptiveAggregatedDistance.
+    """
+    return distance_terms(dict1, dict2)[1]
+
+
+def total_distance_loop(dict1, dict2):
+    """
+    Compute the total distance between two tumours (version used in the paper).
     """
     res = 1000
     if 'Side' in dict1['data'].columns:

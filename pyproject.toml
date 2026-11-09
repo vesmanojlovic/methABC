@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "methabc"
+version = "0.1.0"
+description = "ABC inference of colorectal cancer evolution from fluctuating CpG methylation arrays"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "pyabc>=0.12.13",
+    "numpy",
+    "pandas",
+    "scipy",
+    "autograd",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

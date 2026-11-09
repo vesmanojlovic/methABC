@@ -2,10 +2,12 @@ import os
 import pandas as pd
 import numpy as np
 
+repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
 
 def write_config(
 	params,
-	config_template_path="resources/config_template.dat",
+	config_template_path=os.path.join(repo_dir, "resources/config_template.dat"),
 	output_dir="simulations/",
 ):
     """
@@ -23,9 +25,9 @@ def write_config(
     updated_lines = []
     for line in lines:
         parts = line.split(maxsplit=1)
-        if parts[0] in params.keys():
-            if type(params[parts[0]]) is float:
-                updated_line = f"    {parts[0]} {params[parts[0]]:.6f}\n"
+        if parts and parts[0] in params.keys():
+            if isinstance(params[parts[0]], float):
+                updated_line = f"    {parts[0]} {params[parts[0]]:.10g}\n"
             else:
                 updated_line = f"    {parts[0]} {params[parts[0]]}\n"
         else:
@@ -55,3 +57,15 @@ def import_data(data_path):
     sorted_columns = columns_a + columns_b + other_columns
     data = data[sorted_columns]
     return data
+
+
+def side_counts(data):
+    """
+    Count the glands on each side of a tumour.
+    Args:
+        data: dataframe from import_data
+    Returns:
+        number of A glands, number of B glands
+    """
+    sides = [col[1] for col in data.columns]
+    return sides.count("A"), sides.count("B")
