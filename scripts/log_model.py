@@ -47,7 +47,7 @@ def main():
     unif_params = {
         'meth_rate': (-4, -2),
         'demeth_rate': (-4, -2),
-        'init_migration_rate': (-3.3, -1),
+        'init_migration_rate': (-3.3, -0.5),
         'mu_driver_birth': (-5, -2),
         's_driver_birth': (0, .2),
     }
